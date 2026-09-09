@@ -1,12 +1,12 @@
 import { getSocket } from "./socket.ts";
-import type { GameFinishedPayload, RoundEndPayload, RoundStartPayload, TeamAnsweredPayload } from "../types/index.ts";
+import type { GameFinishedPayload, RoundEndPayload, RoundStartPayload, SubmittedAnswer, TeamAnsweredPayload } from "../types/index.ts";
 
-export function submitAnswer(optionId: string): Promise<void> {
+export function submitAnswer(answer: SubmittedAnswer): Promise<void> {
   const socket = getSocket();
   if (!socket) return Promise.reject(new Error("Não conectado ao servidor."));
 
   return new Promise((resolve, reject) => {
-    socket.emit("game:submit-answer", { optionId }, (response: { ok: boolean; error?: string }) => {
+    socket.emit("game:submit-answer", { answer }, (response: { ok: boolean; error?: string }) => {
       if (response.ok) resolve();
       else reject(new Error(response.error ?? "Erro ao responder."));
     });

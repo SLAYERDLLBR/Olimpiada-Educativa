@@ -24,7 +24,7 @@ export function QuestionCard({ question, disabled, selectedOptionId, correctOpti
       <p className="mb-6 text-xl font-bold text-white">{question.prompt}</p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {question.options.map((option, index) => {
+        {(question.options ?? []).map((option, index) => {
           const isCorrect = correctOptionId === option.id;
           const isWrongSelected = correctOptionId != null && selectedOptionId === option.id && !isCorrect;
 

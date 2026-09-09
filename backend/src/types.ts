@@ -62,13 +62,55 @@ export interface RoomSnapshot {
   variance: { absolute: number; percent: number } | null;
 }
 
+export type FormatType =
+  | "multiple-choice"
+  | "true-false"
+  | "matching"
+  | "fill-blank"
+  | "visual-click"
+  | "numeric-input"
+  | "sequence";
+
+export interface FillBlankAnswerData {
+  acceptedAnswers: string[];
+}
+
+export interface NumericAnswerData {
+  correctValue: number;
+  tolerance: number;
+}
+
+export interface MatchingPair {
+  id: string;
+  left: string;
+  right: string;
+}
+
+export interface MatchingAnswerData {
+  pairs: MatchingPair[];
+}
+
+export interface SequenceItem {
+  id: string;
+  text: string;
+}
+
+export interface SequenceAnswerData {
+  items: SequenceItem[];
+  correctOrder: string[];
+}
+
+export type AnswerData = FillBlankAnswerData | NumericAnswerData | MatchingAnswerData | SequenceAnswerData;
+
 export interface QuestionRow {
   id: string;
   subject: Subject;
   competency: string;
+  format_type: FormatType;
   prompt: string;
-  options: QuestionOption[];
-  correct_option_id: string;
+  options: QuestionOption[] | null;
+  correct_option_id: string | null;
+  answer_data: AnswerData | null;
   points: number;
   difficulty: number;
 }
@@ -76,11 +118,22 @@ export interface QuestionRow {
 /** Question shape sent to the client — never includes the correct answer. */
 export interface PublicGameQuestion {
   id: string;
+  formatType: FormatType;
   prompt: string;
-  options: QuestionOption[];
   points: number;
   difficulty: number;
+  options?: QuestionOption[];
+  matchingLeft?: { id: string; text: string }[];
+  matchingRight?: { id: string; text: string }[];
+  sequenceItems?: { id: string; text: string }[];
 }
+
+export type SubmittedAnswer =
+  | { type: "option"; optionId: string }
+  | { type: "text"; value: string }
+  | { type: "number"; value: number }
+  | { type: "matching"; matches: { leftId: string; rightId: string }[] }
+  | { type: "sequence"; order: string[] };
 
 export interface RoundStartPayload {
   roundNumber: number;
@@ -104,7 +157,8 @@ export interface RoundResultEntry {
 }
 
 export interface RoundEndPayload {
-  correctOptionId: string;
+  correctOptionId?: string;
+  correctAnswerDisplay: string;
   results: RoundResultEntry[];
   scores: Record<string, number>;
   speedrun: boolean;

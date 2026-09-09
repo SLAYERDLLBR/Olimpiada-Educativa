@@ -42,13 +42,21 @@ create index idx_pretests_player_id on pretests(player_id);
 
 -- Sprint 3: jogo principal (motor de rodadas). Separado de pretest_questions
 -- porque tem propósito e ciclo de vida diferentes.
+--
+-- Sprint 4: format_type + answer_data suportam os outros 6 formatos.
+-- options/correct_option_id continuam servindo multiple-choice, true-false
+-- e visual-click (estruturalmente idênticos); os outros 3 formatos com forma
+-- de resposta diferente (fill-blank, numeric-input, matching, sequence)
+-- usam answer_data — ver formato de cada um em docs/ e no plano do Sprint 4.
 create table questions (
   id uuid primary key default gen_random_uuid(),
   subject varchar(20) not null check (subject in ('portugues', 'matematica')),
   competency varchar(100) not null,
+  format_type varchar(30) not null default 'multiple-choice',
   prompt text not null,
-  options jsonb not null,
-  correct_option_id varchar(5) not null,
+  options jsonb,
+  correct_option_id varchar(5),
+  answer_data jsonb,
   points int not null,
   difficulty int not null check (difficulty between 1 and 3)
 );

@@ -3,6 +3,11 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { GameBackground } from "../components/Common/GameBackground.tsx";
 import { GlowButton } from "../components/Common/GlowButton.tsx";
 import { QuestionCard } from "../components/Game/QuestionCard.tsx";
+import { FillBlankInput } from "../components/Game/FillBlankInput.tsx";
+import { NumericInputAnswer } from "../components/Game/NumericInputAnswer.tsx";
+import { MatchingBoard } from "../components/Game/MatchingBoard.tsx";
+import { SequenceBoard } from "../components/Game/SequenceBoard.tsx";
+import { AnswerFeedback } from "../components/Game/AnswerFeedback.tsx";
 import { GameTimerBar } from "../components/Game/GameTimerBar.tsx";
 import { LiveLeaderboard } from "../components/Game/LiveLeaderboard.tsx";
 import { useGameTimer } from "../hooks/useGameTimer.ts";
@@ -11,9 +16,65 @@ import { useRoomStore } from "../store/useRoomStore.ts";
 import * as gameSocket from "../services/gameSocket.ts";
 import * as roomSocket from "../services/roomSocket.ts";
 import { getTeamColorClasses } from "../constants/teamColors.ts";
-import type { GameFinishedPayload, RoundEndPayload, RoundStartPayload } from "../types/index.ts";
+import type { GameFinishedPayload, RoundEndPayload, RoundStartPayload, SubmittedAnswer } from "../types/index.ts";
 
 type Phase = "waiting-round" | "answering" | "team-answered" | "round-end" | "finished";
+
+/** Picks the right input widget for the current question's format, and swaps
+ * to the plain-text gabarito once the round ends (for the formats that don't
+ * have a natural "highlight the right answer" visual like QuestionCard does). */
+function renderAnswerArea(
+  round: RoundStartPayload,
+  phase: Phase,
+  selectedOptionId: string | null,
+  roundEnd: RoundEndPayload | null,
+  onSubmitAnswer: (answer: SubmittedAnswer) => void
+) {
+  const disabled = phase !== "answering";
+  const { question } = round;
+  const showGabarito = phase === "round-end" && roundEnd;
+
+  switch (question.formatType) {
+    case "multiple-choice":
+    case "true-false":
+    case "visual-click":
+      return (
+        <QuestionCard
+          question={question}
+          disabled={disabled}
+          selectedOptionId={selectedOptionId}
+          correctOptionId={phase === "round-end" ? roundEnd?.correctOptionId : null}
+          onSelect={(optionId) => onSubmitAnswer({ type: "option", optionId })}
+        />
+      );
+    case "fill-blank":
+      return showGabarito ? (
+        <AnswerFeedback text={roundEnd.correctAnswerDisplay} />
+      ) : (
+        <FillBlankInput question={question} disabled={disabled} onSubmit={(value) => onSubmitAnswer({ type: "text", value })} />
+      );
+    case "numeric-input":
+      return showGabarito ? (
+        <AnswerFeedback text={roundEnd.correctAnswerDisplay} />
+      ) : (
+        <NumericInputAnswer question={question} disabled={disabled} onSubmit={(value) => onSubmitAnswer({ type: "number", value })} />
+      );
+    case "matching":
+      return showGabarito ? (
+        <AnswerFeedback text={roundEnd.correctAnswerDisplay} />
+      ) : (
+        <MatchingBoard question={question} disabled={disabled} onSubmit={(matches) => onSubmitAnswer({ type: "matching", matches })} />
+      );
+    case "sequence":
+      return showGabarito ? (
+        <AnswerFeedback text={roundEnd.correctAnswerDisplay} />
+      ) : (
+        <SequenceBoard question={question} disabled={disabled} onSubmit={(order) => onSubmitAnswer({ type: "sequence", order })} />
+      );
+    default:
+      return null;
+  }
+}
 
 export function GamePage() {
   const playerId = usePlayerStore((s) => s.playerId);
@@ -64,12 +125,12 @@ export function GamePage() {
   if (!playerId) return <Navigate to="/" replace />;
   if (!snapshot?.teams) return <Navigate to="/lobby" replace />;
 
-  const handleSelect = async (optionId: string) => {
-    setSelectedOptionId(optionId);
+  const handleSubmitAnswer = async (answer: SubmittedAnswer) => {
+    if (answer.type === "option") setSelectedOptionId(answer.optionId);
     try {
-      await gameSocket.submitAnswer(optionId);
+      await gameSocket.submitAnswer(answer);
     } catch (err) {
-      setSelectedOptionId(null);
+      if (answer.type === "option") setSelectedOptionId(null);
       setError(err instanceof Error ? err.message : "Erro ao responder.");
     }
   };
@@ -123,15 +184,7 @@ export function GamePage() {
 
         <div className="flex w-full max-w-4xl flex-col items-center gap-6 lg:flex-row lg:items-start lg:justify-center">
           <div className="flex flex-1 flex-col items-center gap-4">
-            {round && (
-              <QuestionCard
-                question={round.question}
-                disabled={phase !== "answering"}
-                selectedOptionId={selectedOptionId}
-                correctOptionId={phase === "round-end" ? roundEnd?.correctOptionId : null}
-                onSelect={handleSelect}
-              />
-            )}
+            {round && renderAnswerArea(round, phase, selectedOptionId, roundEnd, handleSubmitAnswer)}
 
             {phase === "team-answered" && (
               <p className="text-accent-cyan">

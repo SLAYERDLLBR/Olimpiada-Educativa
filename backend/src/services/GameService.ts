@@ -1,12 +1,17 @@
 import type { Server } from "socket.io";
 import { query } from "../database/connection.js";
 import type {
+  FillBlankAnswerData,
   GameFinishedPayload,
+  MatchingAnswerData,
+  NumericAnswerData,
   QuestionRow,
   RoomPlayer,
   RoundEndPayload,
   RoundResultEntry,
   RoundStartPayload,
+  SequenceAnswerData,
+  SubmittedAnswer,
   Team,
   TeamAnsweredPayload,
 } from "../types.js";
@@ -14,6 +19,7 @@ import type {
 const ROUND_TIME_LIMIT_MS = 40_000;
 const SPEEDRUN_CUTOFF_MS = 30_000;
 const ROUND_END_PAUSE_MS = 3_000;
+const TOTAL_ROUNDS = 12;
 
 interface TeamGameState {
   color: string;
@@ -49,6 +55,21 @@ function shuffle<T>(items: T[]): T[] {
   return copy;
 }
 
+/** Picks up to `count` questions, never repeating the same format_type back to back. */
+function pickRounds(all: QuestionRow[], count: number): QuestionRow[] {
+  const remaining = shuffle(all);
+  const picked: QuestionRow[] = [];
+
+  while (picked.length < count && remaining.length > 0) {
+    const lastFormat = picked[picked.length - 1]?.format_type;
+    let index = remaining.findIndex((q) => q.format_type !== lastFormat);
+    if (index === -1) index = 0; // no alternative left — allow a repeat rather than stall
+    picked.push(...remaining.splice(index, 1));
+  }
+
+  return picked;
+}
+
 function speedMultiplier(responseTimeMs: number): number {
   if (responseTimeMs < 15_000) return 1.5;
   if (responseTimeMs < 25_000) return 1.2;
@@ -66,8 +87,117 @@ function findTeamForPlayer(game: GameState, playerId: string): TeamGameState | u
   return game.teams.find((t) => t.players.some((p) => p.playerId === playerId));
 }
 
+const ACCENT_MAP: Record<string, string> = {
+  á: "a", à: "a", â: "a", ã: "a", ä: "a",
+  é: "e", è: "e", ê: "e", ë: "e",
+  í: "i", ì: "i", î: "i", ï: "i",
+  ó: "o", ò: "o", ô: "o", õ: "o", ö: "o",
+  ú: "u", ù: "u", û: "u", ü: "u",
+  ç: "c",
+};
+
+/** So a fill-blank answer like "numero" (no accent) still matches "número". */
+function normalizeText(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .split("")
+    .map((ch) => ACCENT_MAP[ch] ?? ch)
+    .join("");
+}
+
 function toPublicQuestion(row: QuestionRow) {
-  return { id: row.id, prompt: row.prompt, options: row.options, points: row.points, difficulty: row.difficulty };
+  const base = {
+    id: row.id,
+    formatType: row.format_type,
+    prompt: row.prompt,
+    points: row.points,
+    difficulty: row.difficulty,
+  };
+
+  switch (row.format_type) {
+    case "multiple-choice":
+    case "true-false":
+    case "visual-click":
+      return { ...base, options: row.options ?? [] };
+    case "matching": {
+      const { pairs } = row.answer_data as MatchingAnswerData;
+      return {
+        ...base,
+        matchingLeft: shuffle(pairs.map((p) => ({ id: p.id, text: p.left }))),
+        matchingRight: shuffle(pairs.map((p) => ({ id: p.id, text: p.right }))),
+      };
+    }
+    case "sequence": {
+      const { items } = row.answer_data as SequenceAnswerData;
+      return { ...base, sequenceItems: shuffle(items) };
+    }
+    default:
+      // fill-blank, numeric-input: the prompt alone is enough for the client.
+      return base;
+  }
+}
+
+function checkAnswer(question: QuestionRow, answer: SubmittedAnswer): boolean {
+  switch (question.format_type) {
+    case "multiple-choice":
+    case "true-false":
+    case "visual-click":
+      return answer.type === "option" && question.correct_option_id === answer.optionId;
+
+    case "fill-blank": {
+      if (answer.type !== "text") return false;
+      const { acceptedAnswers } = question.answer_data as FillBlankAnswerData;
+      const normalized = normalizeText(answer.value);
+      return acceptedAnswers.some((accepted) => normalizeText(accepted) === normalized);
+    }
+
+    case "numeric-input": {
+      if (answer.type !== "number") return false;
+      const { correctValue, tolerance } = question.answer_data as NumericAnswerData;
+      return Math.abs(answer.value - correctValue) <= tolerance;
+    }
+
+    case "matching": {
+      if (answer.type !== "matching") return false;
+      const { pairs } = question.answer_data as MatchingAnswerData;
+      return answer.matches.length === pairs.length && answer.matches.every((m) => m.leftId === m.rightId);
+    }
+
+    case "sequence": {
+      if (answer.type !== "sequence") return false;
+      const { correctOrder } = question.answer_data as SequenceAnswerData;
+      return answer.order.length === correctOrder.length && answer.order.every((id, i) => id === correctOrder[i]);
+    }
+
+    default:
+      return false;
+  }
+}
+
+function describeCorrectAnswer(question: QuestionRow): string {
+  switch (question.format_type) {
+    case "multiple-choice":
+    case "visual-click": {
+      const options = question.options ?? [];
+      return options.find((o) => o.id === question.correct_option_id)?.text ?? "";
+    }
+    case "true-false":
+      return question.correct_option_id === "true" ? "Verdadeiro" : "Falso";
+    case "fill-blank":
+      return (question.answer_data as FillBlankAnswerData).acceptedAnswers[0] ?? "";
+    case "numeric-input":
+      return String((question.answer_data as NumericAnswerData).correctValue);
+    case "matching":
+      return (question.answer_data as MatchingAnswerData).pairs.map((p) => `${p.left} → ${p.right}`).join(", ");
+    case "sequence": {
+      const { items, correctOrder } = question.answer_data as SequenceAnswerData;
+      const byId = new Map(items.map((i) => [i.id, i.text]));
+      return correctOrder.map((id) => byId.get(id)).join(" → ");
+    }
+    default:
+      return "";
+  }
 }
 
 export async function startGame(roomCode: string, teams: Team[], io: Server): Promise<void> {
@@ -79,7 +209,7 @@ export async function startGame(roomCode: string, teams: Team[], io: Server): Pr
   const game: GameState = {
     roomCode,
     teams: teams.map((t) => ({ color: t.color, players: t.players, score: 0, combo: 0 })),
-    questionQueue: shuffle(result.rows),
+    questionQueue: pickRounds(result.rows, TOTAL_ROUNDS),
     currentRoundIndex: -1,
     roundStartedAt: 0,
     roundAnswers: new Map(),
@@ -123,7 +253,7 @@ function advanceRound(roomCode: string, io: Server): void {
 export function submitAnswer(
   roomCode: string,
   playerId: string,
-  optionId: string,
+  answer: SubmittedAnswer,
   io: Server
 ): { ok: true } | { ok: false; error: string } {
   const game = games.get(roomCode);
@@ -134,7 +264,7 @@ export function submitAnswer(
   if (game.roundAnswers.has(team.color)) return { ok: false, error: "Sua equipe já respondeu esta rodada." };
 
   const question = game.questionQueue[game.currentRoundIndex];
-  const isCorrect = question.correct_option_id === optionId;
+  const isCorrect = checkAnswer(question, answer);
   const responseTimeMs = Date.now() - game.roundStartedAt;
   const newCombo = isCorrect ? team.combo + 1 : 0;
   const rawPoints = isCorrect ? Math.round(question.points * speedMultiplier(responseTimeMs) * comboMultiplier(newCombo)) : 0;
@@ -180,7 +310,8 @@ function endRound(roomCode: string, io: Server, timedOut: boolean): void {
   });
 
   const payload: RoundEndPayload = {
-    correctOptionId: question.correct_option_id,
+    correctOptionId: question.correct_option_id ?? undefined,
+    correctAnswerDisplay: describeCorrectAnswer(question),
     results,
     scores: Object.fromEntries(game.teams.map((t) => [t.color, t.score])),
     speedrun,

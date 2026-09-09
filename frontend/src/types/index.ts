@@ -51,13 +51,33 @@ export interface AckResponse {
   error?: string;
 }
 
+export type FormatType =
+  | "multiple-choice"
+  | "true-false"
+  | "matching"
+  | "fill-blank"
+  | "visual-click"
+  | "numeric-input"
+  | "sequence";
+
 export interface GameQuestion {
   id: string;
+  formatType: FormatType;
   prompt: string;
-  options: QuestionOption[];
   points: number;
   difficulty: number;
+  options?: QuestionOption[];
+  matchingLeft?: { id: string; text: string }[];
+  matchingRight?: { id: string; text: string }[];
+  sequenceItems?: { id: string; text: string }[];
 }
+
+export type SubmittedAnswer =
+  | { type: "option"; optionId: string }
+  | { type: "text"; value: string }
+  | { type: "number"; value: number }
+  | { type: "matching"; matches: { leftId: string; rightId: string }[] }
+  | { type: "sequence"; order: string[] };
 
 export interface RoundStartPayload {
   roundNumber: number;
@@ -81,7 +101,8 @@ export interface RoundResultEntry {
 }
 
 export interface RoundEndPayload {
-  correctOptionId: string;
+  correctOptionId?: string;
+  correctAnswerDisplay: string;
   results: RoundResultEntry[];
   scores: Record<string, number>;
   speedrun: boolean;
