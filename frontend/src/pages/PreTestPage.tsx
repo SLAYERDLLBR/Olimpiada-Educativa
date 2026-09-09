@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { GameBackground } from "../components/Common/GameBackground.tsx";
 import { SkillSurvey } from "../components/PreTest/SkillSurvey.tsx";
 import { TestQuestion } from "../components/PreTest/TestQuestion.tsx";
@@ -13,6 +13,7 @@ type Step = "survey" | "portuguese" | "matematica" | "results" | "loading";
 
 export function PreTestPage() {
   const { playerId, series } = usePlayerStore();
+  const navigate = useNavigate();
 
   const [step, setStep] = useState<Step>("survey");
   const [surveyChoice, setSurveyChoice] = useState<SurveyChoice | null>(null);
@@ -95,7 +96,7 @@ export function PreTestPage() {
         {step === "matematica" && mathQuestion && (
           <TestQuestion label="Teste de Matemática" question={mathQuestion} onAnswer={handleMathAnswer} />
         )}
-        {step === "results" && result && <SkillResults result={result} />}
+        {step === "results" && result && <SkillResults result={result} onContinue={() => navigate("/lobby")} />}
         {step === "loading" && <p className="text-accent-cyan">Carregando...</p>}
       </div>
     </GameBackground>

@@ -6,8 +6,7 @@ import { GlowButton } from "../components/Common/GlowButton.tsx";
 import { usePlayerStore } from "../store/usePlayerStore.ts";
 import { connectSocket } from "../services/socket.ts";
 import { createPlayer } from "../services/api.ts";
-
-const AVATARS = ["🧑‍💻", "🎮", "🚀", "⚡", "🌟", "💪", "🎯", "👑"];
+import { AVATARS } from "../constants/avatars.ts";
 
 export function LandingPage() {
   const navigate = useNavigate();

@@ -1,8 +1,9 @@
 import type { Server, Socket } from "socket.io";
 import { verifySessionToken } from "../services/PlayerService.js";
+import { registerLobbyHandlers } from "./lobbyHandlers.js";
 
 interface AuthenticatedSocket extends Socket {
-  data: { playerId: string };
+  data: { playerId: string; roomCode?: string };
 }
 
 export function registerSocketHandlers(io: Server) {
@@ -25,10 +26,12 @@ export function registerSocketHandlers(io: Server) {
   io.on("connection", (socket: AuthenticatedSocket) => {
     console.log(`Player connected: ${socket.data.playerId}`);
 
-    // Sprint 1 smoke test only — lobby/game events arrive in Sprint 2.
+    // Sprint 1 smoke test only.
     socket.on("ping", () => {
       socket.emit("pong", { at: Date.now() });
     });
+
+    registerLobbyHandlers(io, socket);
 
     socket.on("disconnect", () => {
       console.log(`Player disconnected: ${socket.data.playerId}`);

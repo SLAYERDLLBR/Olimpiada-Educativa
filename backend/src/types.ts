@@ -36,3 +36,28 @@ export interface PlayerRow {
   dominant_subjects: string[];
   created_at: string;
 }
+
+export type RoomStatus = "waiting" | "ready" | "playing";
+
+export interface RoomPlayer {
+  playerId: string;
+  username: string;
+  series: number;
+  avatarIndex: number;
+  skillScore: number;
+}
+
+export interface Team {
+  color: string;
+  players: RoomPlayer[];
+  totalScore: number;
+}
+
+export interface RoomSnapshot {
+  code: string;
+  hostPlayerId: string;
+  status: RoomStatus;
+  players: RoomPlayer[];
+  teams: Team[] | null;
+  variance: { absolute: number; percent: number } | null;
+}

@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { GlowButton } from "../Common/GlowButton.tsx";
 import type { PretestResult } from "../../types/index.ts";
 
 function badge(correct: boolean) {
@@ -11,7 +12,7 @@ function scoreBadge(score: number) {
   return "🔴 Iniciante";
 }
 
-export function SkillResults({ result }: { result: PretestResult }) {
+export function SkillResults({ result, onContinue }: { result: PretestResult; onContinue: () => void }) {
   const pt = badge(result.portugueseCorrect);
   const mat = badge(result.mathCorrect);
 
@@ -48,6 +49,10 @@ export function SkillResults({ result }: { result: PretestResult }) {
           </p>
         </div>
       </div>
+
+      <GlowButton onClick={onContinue} className="mt-8 w-full">
+        Ir para o Lobby
+      </GlowButton>
     </motion.div>
   );
 }

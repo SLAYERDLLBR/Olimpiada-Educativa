@@ -19,3 +19,34 @@ export interface PretestResult {
   portugueseCorrect: boolean;
   mathCorrect: boolean;
 }
+
+export type RoomStatus = "waiting" | "ready" | "playing";
+
+export interface RoomPlayer {
+  playerId: string;
+  username: string;
+  series: number;
+  avatarIndex: number;
+  skillScore: number;
+}
+
+export interface Team {
+  color: string;
+  players: RoomPlayer[];
+  totalScore: number;
+}
+
+export interface RoomSnapshot {
+  code: string;
+  hostPlayerId: string;
+  status: RoomStatus;
+  players: RoomPlayer[];
+  teams: Team[] | null;
+  variance: { absolute: number; percent: number } | null;
+}
+
+export interface AckResponse {
+  ok: boolean;
+  snapshot?: RoomSnapshot;
+  error?: string;
+}
