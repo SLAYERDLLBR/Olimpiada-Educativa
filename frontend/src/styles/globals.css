@@ -1,0 +1,40 @@
+@import url("https://fonts.googleapis.com/css2?family=Audiowide&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(135deg, #0a1428 0%, #1a3a52 100%);
+  color: #e8eef7;
+  font-family: "Inter", sans-serif;
+}
+
+.text-shadow-neon {
+  text-shadow: 0 0 10px #b923ff, 0 0 20px #ff006e;
+}
+
+::selection {
+  background: #b923ff;
+  color: #e8eef7;
+}
+
+input,
+textarea {
+  background: rgba(26, 58, 82, 0.7);
+  border: 1px solid #b923ff;
+  border-radius: 0.5rem;
+  color: #e8eef7;
+  padding: 0.75rem;
+  font-family: inherit;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: #ff6600;
+  box-shadow: 0 0 20px #b923ff;
+}
