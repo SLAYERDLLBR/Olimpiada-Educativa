@@ -1,9 +1,11 @@
 -- Sprint 1: players, pretest_questions, pretests
 -- Sprint 5: migrado para SQLite (sem servidor pra instalar — decisão do usuário).
 -- Aplicado via `npm run migrate` (backend/src/database/migrate.ts), não precisa
--- de cliente externo.
+-- de cliente externo. `if not exists` em tudo porque isso roda a cada `npm start`
+-- (ver "prestart" no package.json) — precisa ser seguro rodar contra um banco
+-- que já tem as tabelas, sem apagar dados de jogadores existentes.
 
-create table players (
+create table if not exists players (
   id text primary key,
   username text not null,
   series integer not null check (series between 1 and 5),
@@ -14,7 +16,7 @@ create table players (
   created_at text not null default (datetime('now'))
 );
 
-create table pretest_questions (
+create table if not exists pretest_questions (
   id text primary key,
   series integer not null check (series between 1 and 5),
   subject text not null check (subject in ('portugues', 'matematica')),
@@ -25,7 +27,7 @@ create table pretest_questions (
   difficulty integer not null check (difficulty between 1 and 3)
 );
 
-create table pretests (
+create table if not exists pretests (
   id text primary key,
   player_id text not null,
   portuguese_correct integer not null,
@@ -36,8 +38,8 @@ create table pretests (
   foreign key (player_id) references players(id) on delete cascade
 );
 
-create index idx_pretest_questions_series_subject on pretest_questions(series, subject);
-create index idx_pretests_player_id on pretests(player_id);
+create index if not exists idx_pretest_questions_series_subject on pretest_questions(series, subject);
+create index if not exists idx_pretests_player_id on pretests(player_id);
 
 -- Sprint 3: jogo principal (motor de rodadas). Separado de pretest_questions
 -- porque tem propósito e ciclo de vida diferentes.
@@ -47,7 +49,7 @@ create index idx_pretests_player_id on pretests(player_id);
 -- e visual-click (estruturalmente idênticos); os outros 3 formatos com forma
 -- de resposta diferente (fill-blank, numeric-input, matching, sequence)
 -- usam answer_data — ver formato de cada um em docs/ e no plano do Sprint 4.
-create table questions (
+create table if not exists questions (
   id text primary key,
   subject text not null check (subject in ('portugues', 'matematica')),
   competency text not null,

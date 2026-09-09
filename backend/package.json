@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').copyFileSync('src/database/schema.sql','dist/database/schema.sql')\"",
+    "prestart": "node dist/database/migrate.js && node dist/database/seed.js && node dist/database/seedGameQuestions.js",
     "start": "node dist/server.js",
     "migrate": "tsx src/database/migrate.ts",
     "seed": "tsx src/database/seed.ts",
