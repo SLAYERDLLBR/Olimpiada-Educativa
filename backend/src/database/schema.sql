@@ -1,40 +1,39 @@
 -- Sprint 1: players, pretest_questions, pretests
--- Rodar no Supabase SQL Editor. Tabelas de lobby/jogo (teams, game_sessions,
--- rounds, responses, leaderboards) entram no Sprint 2, quando o tamanho de
--- sala flexível e o balanceamento forem implementados.
-
-create extension if not exists "pgcrypto";
+-- Sprint 5: migrado para SQLite (sem servidor pra instalar — decisão do usuário).
+-- Aplicado via `npm run migrate` (backend/src/database/migrate.ts), não precisa
+-- de cliente externo.
 
 create table players (
-  id uuid primary key default gen_random_uuid(),
-  username varchar(20) not null,
-  series int not null check (series between 1 and 5),
-  avatar_index int not null check (avatar_index between 0 and 7),
-  skill_score int check (skill_score between 0 and 100),
-  pretest_completed boolean not null default false,
-  dominant_subjects text[] not null default '{}',
-  created_at timestamptz not null default now()
+  id text primary key,
+  username text not null,
+  series integer not null check (series between 1 and 5),
+  avatar_index integer not null check (avatar_index between 0 and 7),
+  skill_score integer check (skill_score between 0 and 100),
+  pretest_completed integer not null default 0,
+  dominant_subjects text not null default '[]', -- JSON array, parse manual no PlayerService
+  created_at text not null default (datetime('now'))
 );
 
 create table pretest_questions (
-  id uuid primary key default gen_random_uuid(),
-  series int not null check (series between 1 and 5),
-  subject varchar(20) not null check (subject in ('portugues', 'matematica')),
-  category varchar(50) not null,
+  id text primary key,
+  series integer not null check (series between 1 and 5),
+  subject text not null check (subject in ('portugues', 'matematica')),
+  category text not null,
   prompt text not null,
-  options jsonb not null, -- [{ "id": "a", "text": "..." }, ...]
-  correct_option_id varchar(5) not null,
-  difficulty int not null check (difficulty between 1 and 3)
+  options text not null, -- JSON [{ "id": "a", "text": "..." }, ...], parse manual
+  correct_option_id text not null,
+  difficulty integer not null check (difficulty between 1 and 3)
 );
 
 create table pretests (
-  id uuid primary key default gen_random_uuid(),
-  player_id uuid not null references players(id) on delete cascade,
-  portuguese_correct boolean not null,
-  math_correct boolean not null,
-  skill_score int not null check (skill_score between 0 and 100),
-  survey_choice varchar(20) not null check (survey_choice in ('portugues', 'matematica', 'ambas', 'nenhuma')),
-  created_at timestamptz not null default now()
+  id text primary key,
+  player_id text not null,
+  portuguese_correct integer not null,
+  math_correct integer not null,
+  skill_score integer not null check (skill_score between 0 and 100),
+  survey_choice text not null check (survey_choice in ('portugues', 'matematica', 'ambas', 'nenhuma')),
+  created_at text not null default (datetime('now')),
+  foreign key (player_id) references players(id) on delete cascade
 );
 
 create index idx_pretest_questions_series_subject on pretest_questions(series, subject);
@@ -49,14 +48,14 @@ create index idx_pretests_player_id on pretests(player_id);
 -- de resposta diferente (fill-blank, numeric-input, matching, sequence)
 -- usam answer_data — ver formato de cada um em docs/ e no plano do Sprint 4.
 create table questions (
-  id uuid primary key default gen_random_uuid(),
-  subject varchar(20) not null check (subject in ('portugues', 'matematica')),
-  competency varchar(100) not null,
-  format_type varchar(30) not null default 'multiple-choice',
+  id text primary key,
+  subject text not null check (subject in ('portugues', 'matematica')),
+  competency text not null,
+  format_type text not null default 'multiple-choice',
   prompt text not null,
-  options jsonb,
-  correct_option_id varchar(5),
-  answer_data jsonb,
-  points int not null,
-  difficulty int not null check (difficulty between 1 and 3)
+  options text, -- JSON, parse manual
+  correct_option_id text,
+  answer_data text, -- JSON, parse manual
+  points integer not null,
+  difficulty integer not null check (difficulty between 1 and 3)
 );

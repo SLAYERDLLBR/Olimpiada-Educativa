@@ -1,4 +1,5 @@
-import { pool } from "./connection.js";
+import { randomUUID } from "node:crypto";
+import { db } from "./connection.js";
 import type { Subject } from "../types.js";
 
 interface SeedQuestion {
@@ -97,36 +98,34 @@ const questions: SeedQuestion[] = [
 // series=2 para que o endpoint /pretest/questions?series=2 também funcione.
 const allQuestions = [...questions, ...questions.map((q) => ({ ...q, series: 2 }))];
 
-async function seed() {
+function seed() {
   console.log(`Seeding ${allQuestions.length} pretest questions...`);
 
-  const client = await pool.connect();
+  const insert = db.prepare(
+    `insert into pretest_questions (id, series, subject, category, prompt, options, correct_option_id, difficulty)
+     values (?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+
+  db.exec("BEGIN");
   try {
-    await client.query("begin");
-    await client.query("delete from pretest_questions");
-
+    db.prepare("delete from pretest_questions").run();
     for (const q of allQuestions) {
-      await client.query(
-        `insert into pretest_questions (series, subject, category, prompt, options, correct_option_id, difficulty)
-         values ($1, $2, $3, $4, $5, $6, $7)`,
-        [q.series, q.subject, q.category, q.prompt, JSON.stringify(q.options), q.correct_option_id, q.difficulty]
-      );
+      insert.run(randomUUID(), q.series, q.subject, q.category, q.prompt, JSON.stringify(q.options), q.correct_option_id, q.difficulty);
     }
-
-    await client.query("commit");
+    db.exec("COMMIT");
   } catch (err) {
-    await client.query("rollback");
+    db.exec("ROLLBACK");
     throw err;
-  } finally {
-    client.release();
   }
 
   console.log("Seed complete.");
 }
 
-seed()
-  .catch((err) => {
-    console.error("Seed failed:", err);
-    process.exitCode = 1;
-  })
-  .finally(() => pool.end());
+try {
+  seed();
+} catch (err) {
+  console.error("Seed failed:", err);
+  process.exitCode = 1;
+} finally {
+  db.close();
+}

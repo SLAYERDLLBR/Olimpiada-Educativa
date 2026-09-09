@@ -1,4 +1,5 @@
-import { pool } from "./connection.js";
+import { randomUUID } from "node:crypto";
+import { db } from "./connection.js";
 import type { Subject } from "../types.js";
 
 const opts = (a: string, b: string, c: string, d: string) => [
@@ -122,14 +123,17 @@ const otherFormats: SeedQuestion[] = [
 
 const questions = [...multipleChoice, ...otherFormats];
 
-async function seed() {
+function seed() {
   console.log(`Seeding ${questions.length} game questions...`);
 
-  const client = await pool.connect();
-  try {
-    await client.query("begin");
-    await client.query("delete from questions");
+  const insert = db.prepare(
+    `insert into questions (id, subject, competency, format_type, prompt, options, correct_option_id, answer_data, points, difficulty)
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
 
+  db.exec("BEGIN");
+  try {
+    db.prepare("delete from questions").run();
     for (const q of questions) {
       const options = "options" in q ? JSON.stringify(q.options) : null;
       const correctOptionId = "correct_option_id" in q ? q.correct_option_id : null;
@@ -140,27 +144,33 @@ async function seed() {
       else if (q.format_type === "matching") answerData = { pairs: q.pairs };
       else if (q.format_type === "sequence") answerData = { items: q.items, correctOrder: q.correctOrder };
 
-      await client.query(
-        `insert into questions (subject, competency, format_type, prompt, options, correct_option_id, answer_data, points, difficulty)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [q.subject, q.competency, q.format_type, q.prompt, options, correctOptionId, answerData ? JSON.stringify(answerData) : null, q.points, q.difficulty]
+      insert.run(
+        randomUUID(),
+        q.subject,
+        q.competency,
+        q.format_type,
+        q.prompt,
+        options,
+        correctOptionId,
+        answerData ? JSON.stringify(answerData) : null,
+        q.points,
+        q.difficulty
       );
     }
-
-    await client.query("commit");
+    db.exec("COMMIT");
   } catch (err) {
-    await client.query("rollback");
+    db.exec("ROLLBACK");
     throw err;
-  } finally {
-    client.release();
   }
 
   console.log("Seed complete.");
 }
 
-seed()
-  .catch((err) => {
-    console.error("Seed failed:", err);
-    process.exitCode = 1;
-  })
-  .finally(() => pool.end());
+try {
+  seed();
+} catch (err) {
+  console.error("Seed failed:", err);
+  process.exitCode = 1;
+} finally {
+  db.close();
+}

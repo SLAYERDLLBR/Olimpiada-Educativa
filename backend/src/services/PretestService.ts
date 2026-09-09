@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { query } from "../database/connection.js";
 import { getPretestQuestionById } from "./QuestionService.js";
 import { calculateSkillScore, dominantSubjects } from "./ScoringService.js";
@@ -36,9 +37,9 @@ export async function submitPretest(input: SubmitPretestInput): Promise<SubmitPr
   const subjects = dominantSubjects(portugueseCorrect, mathCorrect);
 
   await query(
-    `insert into pretests (player_id, portuguese_correct, math_correct, skill_score, survey_choice)
-     values ($1, $2, $3, $4, $5)`,
-    [input.playerId, portugueseCorrect, mathCorrect, skillScore, input.surveyChoice]
+    `insert into pretests (id, player_id, portuguese_correct, math_correct, skill_score, survey_choice)
+     values ($1, $2, $3, $4, $5, $6)`,
+    [randomUUID(), input.playerId, portugueseCorrect ? 1 : 0, mathCorrect ? 1 : 0, skillScore, input.surveyChoice]
   );
 
   await markPretestCompleted(input.playerId, skillScore, subjects);

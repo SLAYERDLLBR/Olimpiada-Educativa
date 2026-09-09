@@ -6,7 +6,7 @@ Plataforma gamificada de aprendizado (Português + Matemática) para alunos de 1
 
 - **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS + Framer Motion (`frontend/`)
 - **Backend**: Node.js + Express + Socket.IO + TypeScript (`backend/`)
-- **Database**: PostgreSQL (local em desenvolvimento via `pg`; Supabase ou qualquer Postgres gerenciado em produção — o driver fala Postgres puro, então a `DATABASE_URL` é a única coisa que muda)
+- **Database**: SQLite (via `better-sqlite3`) — arquivo local, sem servidor pra instalar; em produção mora num Volume persistente do Railway
 
 ## Status
 
@@ -16,19 +16,18 @@ Veja o plano completo em `docs/` (documentos de especificação originais) e o h
 
 ## Desenvolvimento local
 
-Pré-requisito: PostgreSQL rodando localmente (nativo ou `docker run --name olimpiada-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16`), com um banco `olimpiada_educativa` criado.
+Sem pré-requisito de servidor de banco — SQLite é um arquivo, criado pelo próprio projeto.
 
 ```bash
-# Banco (uma vez)
-createdb olimpiada_educativa   # ou: psql -U postgres -c "CREATE DATABASE olimpiada_educativa;"
-psql -U postgres -d olimpiada_educativa -f backend/src/database/schema.sql
-
 # Backend
 cd backend
 npm install
-cp .env.example .env   # ajustar DATABASE_URL e JWT_SECRET se necessário
-npm run seed             # popula as 50 questões de pré-teste (séries 1º-2º)
-npm run dev               # http://localhost:3001
+mkdir data
+cp .env.example .env    # ajustar JWT_SECRET se necessário
+npm run migrate           # cria data/olimpiada.db a partir de schema.sql
+npm run seed               # popula as 50 questões de pré-teste (séries 1º-2º)
+npm run seed:game          # popula as questões do jogo principal
+npm run dev                 # http://localhost:3001
 
 # Frontend (outro terminal)
 cd frontend

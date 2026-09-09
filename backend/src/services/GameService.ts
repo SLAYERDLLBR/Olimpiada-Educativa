@@ -200,8 +200,22 @@ function describeCorrectAnswer(question: QuestionRow): string {
   }
 }
 
+/** Raw shape as SQLite hands it back — JSON columns as text. */
+interface QuestionRowRaw extends Omit<QuestionRow, "options" | "answer_data"> {
+  options: string | null;
+  answer_data: string | null;
+}
+
+function fromRaw(row: QuestionRowRaw): QuestionRow {
+  return {
+    ...row,
+    options: row.options ? JSON.parse(row.options) : null,
+    answer_data: row.answer_data ? JSON.parse(row.answer_data) : null,
+  };
+}
+
 export async function startGame(roomCode: string, teams: Team[], io: Server): Promise<void> {
-  const result = await query<QuestionRow>("select * from questions");
+  const result = await query<QuestionRowRaw>("select * from questions");
   if (result.rows.length === 0) {
     throw new Error("Nenhuma questão cadastrada. Rode o seed do jogo.");
   }
@@ -209,7 +223,7 @@ export async function startGame(roomCode: string, teams: Team[], io: Server): Pr
   const game: GameState = {
     roomCode,
     teams: teams.map((t) => ({ color: t.color, players: t.players, score: 0, combo: 0 })),
-    questionQueue: pickRounds(result.rows, TOTAL_ROUNDS),
+    questionQueue: pickRounds(result.rows.map(fromRaw), TOTAL_ROUNDS),
     currentRoundIndex: -1,
     roundStartedAt: 0,
     roundAnswers: new Map(),
