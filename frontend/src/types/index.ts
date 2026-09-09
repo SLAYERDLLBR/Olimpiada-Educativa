@@ -50,3 +50,44 @@ export interface AckResponse {
   snapshot?: RoomSnapshot;
   error?: string;
 }
+
+export interface GameQuestion {
+  id: string;
+  prompt: string;
+  options: QuestionOption[];
+  points: number;
+  difficulty: number;
+}
+
+export interface RoundStartPayload {
+  roundNumber: number;
+  totalRounds: number;
+  question: GameQuestion;
+  startedAt: number;
+  timeLimitMs: number;
+}
+
+export interface TeamAnsweredPayload {
+  teamColor: string;
+  answeredCount: number;
+  totalTeams: number;
+}
+
+export interface RoundResultEntry {
+  teamColor: string;
+  isCorrect: boolean;
+  pointsEarned: number;
+  responseTimeMs: number | null;
+}
+
+export interface RoundEndPayload {
+  correctOptionId: string;
+  results: RoundResultEntry[];
+  scores: Record<string, number>;
+  speedrun: boolean;
+}
+
+export interface GameFinishedPayload {
+  finalScores: { teamColor: string; totalScore: number }[];
+  winner: string;
+}

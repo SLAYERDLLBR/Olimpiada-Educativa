@@ -1,6 +1,7 @@
 import type { Server, Socket } from "socket.io";
 import { verifySessionToken } from "../services/PlayerService.js";
 import { registerLobbyHandlers } from "./lobbyHandlers.js";
+import { registerGameHandlers } from "./gameHandlers.js";
 
 interface AuthenticatedSocket extends Socket {
   data: { playerId: string; roomCode?: string };
@@ -32,6 +33,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     registerLobbyHandlers(io, socket);
+    registerGameHandlers(io, socket);
 
     socket.on("disconnect", () => {
       console.log(`Player disconnected: ${socket.data.playerId}`);

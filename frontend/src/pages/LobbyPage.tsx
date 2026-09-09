@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { GameBackground } from "../components/Common/GameBackground.tsx";
 import { GlowButton } from "../components/Common/GlowButton.tsx";
 import { JoinOrCreate } from "../components/Lobby/JoinOrCreate.tsx";
@@ -13,11 +13,13 @@ import * as roomSocket from "../services/roomSocket.ts";
 export function LobbyPage() {
   const playerId = usePlayerStore((s) => s.playerId);
   const { snapshot, setSnapshot } = useRoomStore();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => roomSocket.onRoomUpdated(setSnapshot), [setSnapshot]);
+  useEffect(() => roomSocket.onGameStarting((snap) => { setSnapshot(snap); navigate("/game"); }), [setSnapshot, navigate]);
 
   if (!playerId) return <Navigate to="/" replace />;
 

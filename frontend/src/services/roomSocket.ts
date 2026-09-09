@@ -19,10 +19,13 @@ export const leaveRoom = () => emitWithAck("room:leave");
 export const balanceTeams = () => emitWithAck("room:balance");
 export const startGame = () => emitWithAck("room:start");
 
-export function onRoomUpdated(callback: (snapshot: RoomSnapshot) => void): () => void {
+function on(event: string, callback: (snapshot: RoomSnapshot) => void): () => void {
   const socket = getSocket();
   if (!socket) return () => {};
 
-  socket.on("room:updated", callback);
-  return () => socket.off("room:updated", callback);
+  socket.on(event, callback);
+  return () => socket.off(event, callback);
 }
+
+export const onRoomUpdated = (callback: (snapshot: RoomSnapshot) => void) => on("room:updated", callback);
+export const onGameStarting = (callback: (snapshot: RoomSnapshot) => void) => on("room:game-starting", callback);

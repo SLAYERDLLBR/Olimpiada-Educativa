@@ -1,6 +1,7 @@
 import type { Server, Socket } from "socket.io";
 import { getPlayerById } from "../services/PlayerService.js";
 import * as RoomService from "../services/RoomService.js";
+import * as GameService from "../services/GameService.js";
 import { balanceTeams, MIN_PLAYERS_TO_BALANCE } from "../services/TeamBalanceService.js";
 import type { RoomPlayer, RoomSnapshot } from "../types.js";
 
@@ -37,7 +38,11 @@ function leaveCurrentRoom(io: Server, socket: RoomSocket) {
   socket.leave(roomCode);
   socket.data.roomCode = undefined;
   const room = RoomService.leaveRoom(roomCode, socket.data.playerId);
-  if (room) io.to(roomCode).emit("room:updated", RoomService.toSnapshot(room));
+  if (room) {
+    io.to(roomCode).emit("room:updated", RoomService.toSnapshot(room));
+  } else {
+    GameService.endGame(roomCode);
+  }
 }
 
 export function registerLobbyHandlers(io: Server, socket: RoomSocket) {
@@ -96,7 +101,7 @@ export function registerLobbyHandlers(io: Server, socket: RoomSocket) {
     }
   });
 
-  socket.on("room:start", (_payload, ack: Ack) => {
+  socket.on("room:start", async (_payload, ack: Ack) => {
     try {
       const { roomCode, playerId } = socket.data;
       if (!roomCode) throw new Error("Você não está em uma sala.");
@@ -105,6 +110,7 @@ export function registerLobbyHandlers(io: Server, socket: RoomSocket) {
       if (room.hostPlayerId !== playerId) throw new Error("Só o host pode começar o jogo.");
 
       const updated = RoomService.startGame(roomCode);
+      await GameService.startGame(roomCode, updated.teams!, io);
       const snapshot = RoomService.toSnapshot(updated);
       ack({ ok: true, snapshot });
       io.to(roomCode).emit("room:game-starting", snapshot);

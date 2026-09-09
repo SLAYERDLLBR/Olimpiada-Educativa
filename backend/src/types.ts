@@ -61,3 +61,56 @@ export interface RoomSnapshot {
   teams: Team[] | null;
   variance: { absolute: number; percent: number } | null;
 }
+
+export interface QuestionRow {
+  id: string;
+  subject: Subject;
+  competency: string;
+  prompt: string;
+  options: QuestionOption[];
+  correct_option_id: string;
+  points: number;
+  difficulty: number;
+}
+
+/** Question shape sent to the client — never includes the correct answer. */
+export interface PublicGameQuestion {
+  id: string;
+  prompt: string;
+  options: QuestionOption[];
+  points: number;
+  difficulty: number;
+}
+
+export interface RoundStartPayload {
+  roundNumber: number;
+  totalRounds: number;
+  question: PublicGameQuestion;
+  startedAt: number;
+  timeLimitMs: number;
+}
+
+export interface TeamAnsweredPayload {
+  teamColor: string;
+  answeredCount: number;
+  totalTeams: number;
+}
+
+export interface RoundResultEntry {
+  teamColor: string;
+  isCorrect: boolean;
+  pointsEarned: number;
+  responseTimeMs: number | null;
+}
+
+export interface RoundEndPayload {
+  correctOptionId: string;
+  results: RoundResultEntry[];
+  scores: Record<string, number>;
+  speedrun: boolean;
+}
+
+export interface GameFinishedPayload {
+  finalScores: { teamColor: string; totalScore: number }[];
+  winner: string;
+}

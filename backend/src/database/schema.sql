@@ -39,3 +39,16 @@ create table pretests (
 
 create index idx_pretest_questions_series_subject on pretest_questions(series, subject);
 create index idx_pretests_player_id on pretests(player_id);
+
+-- Sprint 3: jogo principal (motor de rodadas). Separado de pretest_questions
+-- porque tem propósito e ciclo de vida diferentes.
+create table questions (
+  id uuid primary key default gen_random_uuid(),
+  subject varchar(20) not null check (subject in ('portugues', 'matematica')),
+  competency varchar(100) not null,
+  prompt text not null,
+  options jsonb not null,
+  correct_option_id varchar(5) not null,
+  points int not null,
+  difficulty int not null check (difficulty between 1 and 3)
+);

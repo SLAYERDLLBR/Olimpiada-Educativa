@@ -1,21 +1,10 @@
 import { motion } from "framer-motion";
 import { PlayerCard } from "./PlayerCard.tsx";
+import { getTeamColorClasses } from "../../constants/teamColors.ts";
 import type { Team } from "../../types/index.ts";
 
-// Tailwind's content scanner needs literal class strings — a template literal
-// like `border-team-${color}` would get purged from the production build.
-const COLOR_CLASSES: Record<string, { border: string; text: string }> = {
-  red: { border: "border-team-red", text: "text-team-red" },
-  blue: { border: "border-team-blue", text: "text-team-blue" },
-  yellow: { border: "border-team-yellow", text: "text-team-yellow" },
-  green: { border: "border-team-green", text: "text-team-green" },
-  purple: { border: "border-team-purple", text: "text-team-purple" },
-  orange: { border: "border-team-orange", text: "text-team-orange" },
-  cyan: { border: "border-team-cyan", text: "text-team-cyan" },
-};
-
 export function TeamPanel({ team, hostPlayerId }: { team: Team; hostPlayerId: string }) {
-  const colors = COLOR_CLASSES[team.color] ?? COLOR_CLASSES.purple;
+  const colors = getTeamColorClasses(team.color);
 
   return (
     <motion.div
