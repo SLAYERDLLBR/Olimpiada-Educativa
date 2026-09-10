@@ -1,10 +1,16 @@
 import { DatabaseSync } from "node:sqlite";
+import { mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { env } from "../config/env.js";
 
 // Built into Node 22.5+ — no native compilation, no external dependency,
 // nothing to install. That's the whole point after Postgres and MySQL both
 // needed a local server the user couldn't get installed.
-export const db = new DatabaseSync(env.databaseUrl);
+const dbPath = resolve(env.databaseUrl);
+console.log(`[db] Opening SQLite database at: ${dbPath}`);
+mkdirSync(dirname(dbPath), { recursive: true });
+
+export const db = new DatabaseSync(dbPath);
 db.exec("PRAGMA foreign_keys = ON");
 db.exec("PRAGMA journal_mode = WAL");
 
